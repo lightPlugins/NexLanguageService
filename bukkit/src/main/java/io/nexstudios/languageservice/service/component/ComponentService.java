@@ -9,6 +9,19 @@ public interface ComponentService extends Service {
 
 
   /**
+   * Creates a new instance of ComponentBuilder for building localized components.
+   * This method provides an entry point to customize and build a Component using a specific player's language settings,
+   * a localization path, and a default fallback string.
+   *
+   * @param player the player whose language settings will determine the localization
+   * @param path the path used to retrieve the localized string
+   * @param def the default string value to use if the path is not resolved
+   * @return a ComponentBuilder instance for constructing the localized Component
+   * @throws NullPointerException if player, path, or def is null
+   */
+  ComponentBuilder builder(Player player, String path, String def);
+
+  /**
    * Retrieves a localized Component for the given player and path.
    * The localization process uses the player's language settings to
    * resolve the provided path into a string, which is then parsed into a Component.

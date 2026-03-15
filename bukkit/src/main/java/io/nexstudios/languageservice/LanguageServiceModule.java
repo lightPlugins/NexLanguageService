@@ -30,7 +30,6 @@ public class LanguageServiceModule implements ServiceModule {
     MultiFileReaderService multiFileReaderService = serviceAccessor.getService(MultiFileReaderService.class);
 
     LanguageService languageService = new DefaultLanguageService(plugin, multiFileReaderService);
-    languageService.reload();
 
     serviceAccessor.register(LanguageService.class, languageService);
 

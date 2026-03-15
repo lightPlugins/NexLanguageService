@@ -3,8 +3,8 @@ package io.nexstudios.languageservice.service.language;
 import io.nexstudios.configservice.config.ConfigurationSection;
 import io.nexstudios.configservice.config.FileConfiguration;
 import io.nexstudios.configservice.service.multireader.MultiFileReaderService;
+import io.nexstudios.serviceregistry.di.Dependencies;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
 import org.bukkit.persistence.PersistentDataContainer;
@@ -16,7 +16,9 @@ import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
-@RequiredArgsConstructor
+@Dependencies({
+    MultiFileReaderService.class
+})
 public class DefaultLanguageService implements LanguageService {
 
   private static final Path LANG_DIR = Path.of("languages");
@@ -27,13 +29,21 @@ public class DefaultLanguageService implements LanguageService {
   @Getter
   private final String defaultLanguage = "en";
 
-  private final NamespacedKey pdcKey = new NamespacedKey(plugin, "language");
+  private final NamespacedKey pdcKey;
 
   private final Map<String, FileConfiguration> languagesById = new ConcurrentHashMap<>();
 
+  public DefaultLanguageService(Plugin plugin, MultiFileReaderService multiFileReaderService) {
+    this.plugin = Objects.requireNonNull(plugin, "plugin");
+    this.multiFileReaderService = Objects.requireNonNull(multiFileReaderService, "multiFileReaderService");
+    this.pdcKey = new NamespacedKey(this.plugin, "language");
+  }
+
   @Override
   public void reload() {
+    plugin.getLogger().info("Loading languages from " + LANG_DIR + " ...");
     Map<Path, FileConfiguration> loaded = multiFileReaderService.loadAll(LANG_DIR);
+    plugin.getLogger().info("Loaded " + loaded.size() + " languages from " + LANG_DIR);
 
     Map<String, FileConfiguration> next = new LinkedHashMap<>();
     for (Map.Entry<Path, FileConfiguration> e : loaded.entrySet()) {
