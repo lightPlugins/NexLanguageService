@@ -3,6 +3,7 @@ package io.nexstudios.languageservice.service.language;
 import io.nexstudios.configservice.config.ConfigurationSection;
 import io.nexstudios.configservice.config.FileConfiguration;
 import io.nexstudios.configservice.service.multireader.MultiFileReaderService;
+import io.nexstudios.configservice.service.singlereader.FileReaderService;
 import io.nexstudios.serviceregistry.di.Dependencies;
 import lombok.Getter;
 import org.bukkit.NamespacedKey;
@@ -12,19 +13,25 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.Plugin;
 import org.spongepowered.configurate.CommentedConfigurationNode;
 
+import java.net.URI;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 
 @Dependencies({
-    MultiFileReaderService.class
+    MultiFileReaderService.class,
+    FileReaderService.class
 })
 public class DefaultLanguageService implements LanguageService {
 
-  private static final Path LANG_DIR = Path.of("languages");
+  private static final String LANG_RESOURCE_PREFIX = "languages/";
+  private static final String LANG_DIR_NAME = "languages";
 
   private final Plugin plugin;
   private final MultiFileReaderService multiFileReaderService;
+  private final FileReaderService fileReaderService;
 
   @Getter
   private final String defaultLanguage = "en";
@@ -33,17 +40,26 @@ public class DefaultLanguageService implements LanguageService {
 
   private final Map<String, FileConfiguration> languagesById = new ConcurrentHashMap<>();
 
-  public DefaultLanguageService(Plugin plugin, MultiFileReaderService multiFileReaderService) {
+  public DefaultLanguageService(Plugin plugin, MultiFileReaderService multiFileReaderService, FileReaderService fileReaderService) {
     this.plugin = Objects.requireNonNull(plugin, "plugin");
     this.multiFileReaderService = Objects.requireNonNull(multiFileReaderService, "multiFileReaderService");
+    this.fileReaderService = Objects.requireNonNull(fileReaderService, "fileReaderService");
     this.pdcKey = new NamespacedKey(this.plugin, "language");
   }
 
   @Override
   public void reload() {
-    plugin.getLogger().info("Loading languages from " + LANG_DIR + " ...");
-    Map<Path, FileConfiguration> loaded = multiFileReaderService.loadAll(LANG_DIR);
-    plugin.getLogger().info("Loaded " + loaded.size() + " languages from " + LANG_DIR);
+    Path langDir = plugin.getDataFolder().toPath().resolve(LANG_DIR_NAME);
+
+    plugin.getLogger().info("Ensuring bundled language defaults (create + autoupdate) ...");
+    ensureBundledLanguagesPresentAndUpdated();
+
+    plugin.getLogger().info("Loading languages from " + langDir + " ...");
+
+    Path relativeLangDir = Path.of(LANG_DIR_NAME);
+    Map<Path, FileConfiguration> loaded = multiFileReaderService.loadAll(relativeLangDir);
+
+    plugin.getLogger().info("Loaded " + loaded.size() + " languages from " + langDir);
 
     Map<String, FileConfiguration> next = new LinkedHashMap<>();
     for (Map.Entry<Path, FileConfiguration> e : loaded.entrySet()) {
@@ -57,12 +73,66 @@ public class DefaultLanguageService implements LanguageService {
 
     if (!languagesById.containsKey(defaultLanguage) && !languagesById.isEmpty()) {
       plugin.getLogger().warning(
-          "Default language '" + defaultLanguage + "' was not found in " + LANG_DIR + " (available: " + languagesById.keySet() + ")"
+          "Default language '" + defaultLanguage + "' was not found in " + langDir + " (available: " + languagesById.keySet() + ")"
       );
     }
   }
 
-  @Override
+  private void ensureBundledLanguagesPresentAndUpdated() {
+    URI jarUri;
+    try {
+      jarUri = plugin.getClass().getProtectionDomain().getCodeSource().getLocation().toURI();
+    } catch (Exception e) {
+      plugin.getLogger().warning("Could not resolve plugin jar location (" + e.getMessage() + ")");
+      return;
+    }
+
+    Path jarPath;
+    try {
+      jarPath = Path.of(jarUri);
+    } catch (Exception e) {
+      plugin.getLogger().warning("Could not convert plugin jar URI to path: " + jarUri + " (" + e.getMessage() + ")");
+      return;
+    }
+
+    int processed = 0;
+
+    try (JarFile jar = new JarFile(jarPath.toFile())) {
+      Enumeration<JarEntry> entries = jar.entries();
+
+      while (entries.hasMoreElements()) {
+        JarEntry entry = entries.nextElement();
+        if (entry.isDirectory()) continue;
+
+        String resourcePath = entry.getName(); // e.g. languages/en.yml
+        if (!resourcePath.startsWith(LANG_RESOURCE_PREFIX)) continue;
+        if (!resourcePath.endsWith(".yml")) continue;
+
+        String fileName = resourcePath.substring(LANG_RESOURCE_PREFIX.length()); // e.g. en.yml
+        if (fileName.isBlank()) continue;
+
+        // always directly under languages/ (no subfolders)
+        if (fileName.contains("/")) continue;
+
+        Path relativeTarget = Path.of(LANG_DIR_NAME).resolve(fileName); // languages/en.yml
+
+        try {
+          fileReaderService.load(relativeTarget, resourcePath, true);
+          processed++;
+        } catch (Exception ex) {
+          plugin.getLogger().warning("Failed to ensure language default '" + resourcePath + "': " + ex.getMessage());
+        }
+      }
+    } catch (Exception e) {
+      plugin.getLogger().warning("Could not scan plugin jar for bundled language files (" + e.getMessage() + ")");
+      return;
+    }
+
+    if (processed > 0) {
+      plugin.getLogger().info("Processed " + processed + " bundled language file(s) via FileReaderService (create + autoupdate).");
+    }
+  }
+
   public Set<String> getRegisteredLanguages() {
     return Collections.unmodifiableSet(new LinkedHashSet<>(languagesById.keySet()));
   }

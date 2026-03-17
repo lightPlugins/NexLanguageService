@@ -1,6 +1,7 @@
 package io.nexstudios.languageservice;
 
 import io.nexstudios.configservice.service.multireader.MultiFileReaderService;
+import io.nexstudios.configservice.service.singlereader.FileReaderService;
 import io.nexstudios.languageservice.service.component.ComponentService;
 import io.nexstudios.languageservice.service.component.DefaultComponentService;
 import io.nexstudios.languageservice.service.language.DefaultLanguageService;
@@ -12,9 +13,9 @@ import io.nexstudios.serviceregistry.di.ServiceAccessor;
 import io.nexstudios.serviceregistry.di.ServiceModule;
 import org.bukkit.plugin.Plugin;
 
-
 @Dependencies({
-    MultiFileReaderService.class
+    MultiFileReaderService.class,
+    FileReaderService.class
 })
 public class LanguageServiceModule implements ServiceModule {
 
@@ -28,8 +29,9 @@ public class LanguageServiceModule implements ServiceModule {
   public void install(ServiceAccessor serviceAccessor) {
 
     MultiFileReaderService multiFileReaderService = serviceAccessor.getService(MultiFileReaderService.class);
+    FileReaderService fileReaderService = serviceAccessor.getService(FileReaderService.class);
 
-    LanguageService languageService = new DefaultLanguageService(plugin, multiFileReaderService);
+    LanguageService languageService = new DefaultLanguageService(plugin, multiFileReaderService, fileReaderService);
 
     serviceAccessor.register(LanguageService.class, languageService);
 
