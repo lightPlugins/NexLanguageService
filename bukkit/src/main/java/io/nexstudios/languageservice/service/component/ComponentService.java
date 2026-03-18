@@ -19,7 +19,7 @@ public interface ComponentService extends Service {
    * @return a ComponentBuilder instance for constructing the localized Component
    * @throws NullPointerException if player, path, or def is null
    */
-  ComponentBuilder builder(Player player, String path, String def);
+  ComponentBuilder builder(Player player, String path, String def, boolean withPrefix);
 
   /**
    * Retrieves a localized Component for the given player and path.
@@ -31,7 +31,7 @@ public interface ComponentService extends Service {
    * @return the localized Component for the given player and path
    * @throws NullPointerException if player or path is null
    */
-  Component getComponent(Player player, String path);
+  Component getComponent(Player player, String path, boolean withPrefix);
   /**
    * Retrieves a localized Component for the given player, path, and default value.
    * The method attempts to resolve a string representation of the Component based on
@@ -46,7 +46,7 @@ public interface ComponentService extends Service {
    *         based on the default value if the path is not resolved
    * @throws NullPointerException if player or path is null
    */
-  Component getComponent(Player player, String path, String def);
+  Component getComponent(Player player, String path, String def, boolean withPrefix);
 
   /**
    * Retrieves a localized Component for the given player, path, default value, and TagResolver.
@@ -63,7 +63,7 @@ public interface ComponentService extends Service {
    *         based on the default value if the path is not resolved
    * @throws NullPointerException if player, path, or tagResolver is null
    */
-  Component getComponent(Player player, String path, String def, TagResolver tagResolver);
+  Component getComponent(Player player, String path, String def, TagResolver tagResolver, boolean withPrefix);
 
 
   /**
@@ -78,7 +78,7 @@ public interface ComponentService extends Service {
    * @return the localized Component for the given player and path, resolved using the provided TagResolver
    * @throws NullPointerException if player, path, or tagResolver is null
    */
-  Component getComponent(Player player, String path, TagResolver tagResolver);
+  Component getComponent(Player player, String path, TagResolver tagResolver, boolean withPrefix);
 
   /**
    * Parses an already resolved raw string into a Component (MiniMessage).

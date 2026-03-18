@@ -28,41 +28,47 @@ public class DefaultComponentService implements ComponentService {
   private final MiniMessage miniMessage = MiniMessage.miniMessage();
 
   @Override
-  public ComponentBuilder builder(Player player, String path, String def) {
+  public ComponentBuilder builder(Player player, String path, String def, boolean withPrefix) {
     Objects.requireNonNull(player, "player");
     Objects.requireNonNull(path, "path");
 
     String raw = stringPathService.getTranslation(player, path, def);
+    raw = withPrefix ? applyOptionalPrefix(player, raw) : raw;
+
     return new ComponentBuilder(this, raw);
   }
 
   @Override
-  public Component getComponent(Player player, String path) {
-    return getComponent(player, path, path);
+  public Component getComponent(Player player, String path, boolean withPrefix) {
+    return getComponent(player, path, path, withPrefix);
   }
 
   @Override
-  public Component getComponent(Player player, String path, String def) {
+  public Component getComponent(Player player, String path, String def, boolean withPrefix) {
     Objects.requireNonNull(player, "player");
     Objects.requireNonNull(path, "path");
 
     String raw = stringPathService.getTranslation(player, path, def);
+    raw = withPrefix ? applyOptionalPrefix(player, raw) : raw;
+
     return parse(raw);
   }
 
   @Override
-  public Component getComponent(Player player, String path, String def, TagResolver tagResolver) {
+  public Component getComponent(Player player, String path, String def, TagResolver tagResolver, boolean withPrefix) {
     Objects.requireNonNull(player, "player");
     Objects.requireNonNull(path, "path");
     Objects.requireNonNull(tagResolver, "tagResolver");
 
     String raw = stringPathService.getTranslation(player, path, def);
+    raw = withPrefix ? applyOptionalPrefix(player, raw) : raw;
+
     return parse(raw, tagResolver);
   }
 
   @Override
-  public Component getComponent(Player player, String path, TagResolver tagResolver) {
-    return getComponent(player, path, path, tagResolver);
+  public Component getComponent(Player player, String path, TagResolver tagResolver, boolean withPrefix) {
+    return getComponent(player, path, path, tagResolver, withPrefix);
   }
 
   @Override
@@ -83,6 +89,22 @@ public class DefaultComponentService implements ComponentService {
 
     String mm = legacyToMiniMessage(raw);
     return miniMessage.deserialize(mm, tagResolver);
+  }
+
+  private String applyOptionalPrefix(Player player, String rawMessage) {
+    String prefix = resolveRawPrefix(player);
+    if (prefix.isBlank()) {
+      return rawMessage;
+    }
+    if (rawMessage == null || rawMessage.isBlank()) {
+      return prefix;
+    }
+    return prefix + " " + rawMessage;
+  }
+
+  private String resolveRawPrefix(Player player) {
+    String prefix = stringPathService.getTranslation(player, "general.prefix", "");
+    return prefix == null ? "" : prefix.trim();
   }
 
   private static String legacyToMiniMessage(String in) {
