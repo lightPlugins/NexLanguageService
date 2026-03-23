@@ -8,6 +8,8 @@ import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 import org.bukkit.entity.Player;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -69,6 +71,28 @@ public class DefaultComponentService implements ComponentService {
   @Override
   public Component getComponent(Player player, String path, TagResolver tagResolver, boolean withPrefix) {
     return getComponent(player, path, path, tagResolver, withPrefix);
+  }
+
+  @Override
+  public List<Component> getComponents(Player player, String path, String def, boolean withPrefix) {
+    return getComponents(player, path, def, TagResolver.empty(), withPrefix);
+  }
+
+  @Override
+  public List<Component> getComponents(Player player, String path, String def, TagResolver tagResolver, boolean withPrefix) {
+    Objects.requireNonNull(player, "player");
+    Objects.requireNonNull(path, "path");
+    Objects.requireNonNull(tagResolver, "tagResolver");
+
+    List<String> lines = stringPathService.getTranslationLines(player, path, List.of(def));
+    List<Component> out = new ArrayList<>(Math.max(1, lines.size()));
+
+    for (String rawLine : lines) {
+      String raw = withPrefix ? applyOptionalPrefix(player, rawLine) : rawLine;
+      out.add(tagResolver == TagResolver.empty() ? parse(raw) : parse(raw, tagResolver));
+    }
+
+    return out;
   }
 
   @Override
