@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
+import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
@@ -20,6 +21,8 @@ import java.util.regex.Pattern;
 })
 public class DefaultComponentService implements ComponentService {
 
+  private static final String DEFAULT_CONSOLE_LANGUAGE = "en";
+
   private static final Pattern LEGACY_HEX = Pattern.compile("(?i)[&§]#([0-9a-f]{6})");
 
   private final StringPathService stringPathService;
@@ -31,11 +34,16 @@ public class DefaultComponentService implements ComponentService {
 
   @Override
   public ComponentBuilder builder(Player player, String path, String def, boolean withPrefix) {
-    Objects.requireNonNull(player, "player");
+    return builder((CommandSender) player, path, def, withPrefix);
+  }
+
+  @Override
+  public ComponentBuilder builder(CommandSender sender, String path, String def, boolean withPrefix) {
+    Objects.requireNonNull(sender, "sender");
     Objects.requireNonNull(path, "path");
 
-    String raw = stringPathService.getTranslation(player, path, def);
-    raw = withPrefix ? applyOptionalPrefix(player, raw) : raw;
+    String raw = resolveRawTranslation(sender, path, def);
+    raw = withPrefix ? applyOptionalPrefix(sender, raw) : raw;
 
     return new ComponentBuilder(this, raw);
   }
@@ -46,24 +54,39 @@ public class DefaultComponentService implements ComponentService {
   }
 
   @Override
+  public Component getComponent(CommandSender sender, String path, boolean withPrefix) {
+    return getComponent(sender, path, path, withPrefix);
+  }
+
+  @Override
   public Component getComponent(Player player, String path, String def, boolean withPrefix) {
-    Objects.requireNonNull(player, "player");
+    return getComponent((CommandSender) player, path, def, withPrefix);
+  }
+
+  @Override
+  public Component getComponent(CommandSender sender, String path, String def, boolean withPrefix) {
+    Objects.requireNonNull(sender, "sender");
     Objects.requireNonNull(path, "path");
 
-    String raw = stringPathService.getTranslation(player, path, def);
-    raw = withPrefix ? applyOptionalPrefix(player, raw) : raw;
+    String raw = resolveRawTranslation(sender, path, def);
+    raw = withPrefix ? applyOptionalPrefix(sender, raw) : raw;
 
     return parse(raw);
   }
 
   @Override
   public Component getComponent(Player player, String path, String def, TagResolver tagResolver, boolean withPrefix) {
-    Objects.requireNonNull(player, "player");
+    return getComponent((CommandSender) player, path, def, tagResolver, withPrefix);
+  }
+
+  @Override
+  public Component getComponent(CommandSender sender, String path, String def, TagResolver tagResolver, boolean withPrefix) {
+    Objects.requireNonNull(sender, "sender");
     Objects.requireNonNull(path, "path");
     Objects.requireNonNull(tagResolver, "tagResolver");
 
-    String raw = stringPathService.getTranslation(player, path, def);
-    raw = withPrefix ? applyOptionalPrefix(player, raw) : raw;
+    String raw = resolveRawTranslation(sender, path, def);
+    raw = withPrefix ? applyOptionalPrefix(sender, raw) : raw;
 
     return parse(raw, tagResolver);
   }
@@ -74,21 +97,36 @@ public class DefaultComponentService implements ComponentService {
   }
 
   @Override
+  public Component getComponent(CommandSender sender, String path, TagResolver tagResolver, boolean withPrefix) {
+    return getComponent(sender, path, path, tagResolver, withPrefix);
+  }
+
+  @Override
   public List<Component> getComponents(Player player, String path, String def, boolean withPrefix) {
     return getComponents(player, path, def, TagResolver.empty(), withPrefix);
   }
 
   @Override
+  public List<Component> getComponents(CommandSender sender, String path, String def, boolean withPrefix) {
+    return getComponents(sender, path, def, TagResolver.empty(), withPrefix);
+  }
+
+  @Override
   public List<Component> getComponents(Player player, String path, String def, TagResolver tagResolver, boolean withPrefix) {
-    Objects.requireNonNull(player, "player");
+    return getComponents((CommandSender) player, path, def, tagResolver, withPrefix);
+  }
+
+  @Override
+  public List<Component> getComponents(CommandSender sender, String path, String def, TagResolver tagResolver, boolean withPrefix) {
+    Objects.requireNonNull(sender, "sender");
     Objects.requireNonNull(path, "path");
     Objects.requireNonNull(tagResolver, "tagResolver");
 
-    List<String> lines = stringPathService.getTranslationLines(player, path, List.of(def));
+    List<String> lines = resolveRawTranslations(sender, path, List.of(def));
     List<Component> out = new ArrayList<>(Math.max(1, lines.size()));
 
     for (String rawLine : lines) {
-      String raw = withPrefix ? applyOptionalPrefix(player, rawLine) : rawLine;
+      String raw = withPrefix ? applyOptionalPrefix(sender, rawLine) : rawLine;
       out.add(tagResolver == TagResolver.empty() ? parse(raw) : parse(raw, tagResolver));
     }
 
@@ -115,8 +153,8 @@ public class DefaultComponentService implements ComponentService {
     return miniMessage.deserialize(mm, tagResolver);
   }
 
-  private String applyOptionalPrefix(Player player, String rawMessage) {
-    String prefix = resolveRawPrefix(player);
+  private String applyOptionalPrefix(CommandSender sender, String rawMessage) {
+    String prefix = resolveRawPrefix(sender);
     if (prefix.isBlank()) {
       return rawMessage;
     }
@@ -126,9 +164,23 @@ public class DefaultComponentService implements ComponentService {
     return prefix + " " + rawMessage;
   }
 
-  private String resolveRawPrefix(Player player) {
-    String prefix = stringPathService.getTranslation(player, "general.prefix", "");
+  private String resolveRawPrefix(CommandSender sender) {
+    String prefix = resolveRawTranslation(sender, "general.prefix", "");
     return prefix == null ? "" : prefix.trim();
+  }
+
+  private String resolveRawTranslation(CommandSender sender, String path, String def) {
+    if (sender instanceof Player player) {
+      return stringPathService.getTranslation(player, path, def);
+    }
+    return stringPathService.getTranslation(DEFAULT_CONSOLE_LANGUAGE, path, def);
+  }
+
+  private List<String> resolveRawTranslations(CommandSender sender, String path, List<String> def) {
+    if (sender instanceof Player player) {
+      return stringPathService.getTranslationLines(player, path, def);
+    }
+    return stringPathService.getTranslationLines(DEFAULT_CONSOLE_LANGUAGE, path, def);
   }
 
   private static String legacyToMiniMessage(String in) {
