@@ -199,6 +199,20 @@ public class DefaultLanguageService implements LanguageService {
   }
 
   @Override
+  public List<String> getTranslation(Player player, String key) {
+    Objects.requireNonNull(player, "player");
+    Objects.requireNonNull(key, "key");
+
+    FileConfiguration cfg = resolveConfig(getLanguage(player));
+    if (cfg == null) {
+      return List.of();
+    }
+
+    List<String> list = cfg.getStringList(key);
+    return list == null ? List.of() : list;
+  }
+
+  @Override
   public ConfigurationSection section(Player player) {
     FileConfiguration cfg = resolveConfig(getLanguage(player));
     if (cfg == null) {

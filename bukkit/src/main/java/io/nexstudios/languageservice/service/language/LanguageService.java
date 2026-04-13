@@ -5,6 +5,7 @@ import io.nexstudios.configservice.config.FileConfiguration;
 import io.nexstudios.serviceregistry.di.Service;
 import org.bukkit.entity.Player;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -56,6 +57,12 @@ public interface LanguageService extends Service {
    * Translate a key using the player's language. If the key is missing, returns def.
    */
   String translate(Player player, String key, String def);
+
+  /**
+   * Returns a translation list for a key using the player's language.
+   * If the value at the key is not a list, an empty list is returned.
+   */
+  List<String> getTranslation(Player player, String key);
 
   /**
    * @return the root section for the player's language (for more advanced access).
