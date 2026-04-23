@@ -9,7 +9,7 @@ version = providers.gradleProperty("serviceVersion").get()
 
 dependencies {
     paperweight.paperDevBundle(providers.gradleProperty("paperVersion").get())
-    api("com.github.lightplugins:NexServiceRegistry:${providers.gradleProperty("registryVersion").get()}")
+    api("com.github.lightplugins:NexServiceRegistry:v1.0.2")
     compileOnly("net.kyori:adventure-text-serializer-ansi:4.26.1")
     compileOnly("io.nexstudios.configservice:platform:v1.0.0")
 
